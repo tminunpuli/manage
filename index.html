@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>熊肯作織布的家後台</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@700&display=swap" rel="stylesheet">
+<script src="config.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<style>
+:root{
+  /* 後台：上方摘要＋分頁（商品管理／新增照片／前台設定），左側分類統計、右側商品格 */
+  --bg:#f1f2f6;--surface:#fff;--ink:#1b1e2b;--muted:#5b6074;--line:#d8dbe5;
+  --accent:#3346a8;--accent-soft:#e3e7fa;--weave:#b0303d;--weave-soft:#f8e3e5;
+  --warn:#9a6200;--warn-soft:#fbefd6;--ok:#2f7a4b;--ok-soft:#dff1e5;
+  --font-display:"Noto Serif TC","Songti TC","PMingLiU",serif;
+  --font-body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root{--bg:#11131a;--surface:#1a1d27;--ink:#e7e8ef;--muted:#9a9fb3;--line:#2d3142;--accent:#93a1f2;--accent-soft:#252b4a;--weave:#e57a85;--weave-soft:#3a2026;--warn:#e9b04f;--warn-soft:#3a2d14;--ok:#6fcf93;--ok-soft:#183223;color-scheme:dark}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.55}
+button,input,select,textarea{font:inherit;color:inherit}
+img{max-width:100%;display:block}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1240px;margin:0 auto;padding:20px 20px 60px}
+.btn{border:1px solid var(--line);background:var(--surface);padding:8px 14px;border-radius:8px;cursor:pointer;font-weight:500;display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:var(--ink)}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+@media (prefers-color-scheme: dark){.btn.primary{color:#11131a}}
+.btn.danger{color:var(--weave);border-color:var(--weave)}
+.btn.small{padding:4px 10px;font-size:13px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.pill{display:inline-block;font-size:12px;padding:1px 8px;border-radius:99px;background:var(--bg);color:var(--muted);border:1px solid var(--line);white-space:nowrap}
+.pill.ok{background:var(--ok-soft);color:var(--ok);border-color:transparent}
+.pill.warn{background:var(--warn-soft);color:var(--warn);border-color:transparent}
+.pill.bad{background:var(--weave-soft);color:var(--weave);border-color:transparent}
+.code{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-weight:600;letter-spacing:.02em}
+.note{font-size:13px;color:var(--muted)}
+.note.err{color:var(--weave)}
+.demo{background:var(--warn-soft);color:var(--warn);text-align:center;font-size:13px;padding:6px}
+/* 登入 */
+.login{max-width:380px;margin:12vh auto;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:28px;display:flex;flex-direction:column;gap:12px}
+.login h1{font-family:var(--font-display);margin:0;font-size:24px}
+.login input{padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+/* 標頭 */
+header.top{display:flex;flex-wrap:wrap;gap:16px 32px;align-items:flex-end;justify-content:space-between;padding-bottom:16px;border-bottom:1px solid var(--line)}
+h1.t{font-family:var(--font-display);font-size:26px;margin:0;letter-spacing:.04em}
+.links{display:flex;gap:12px;font-size:13px;flex-wrap:wrap}
+.links a,.links button{color:var(--accent);background:none;border:0;padding:0;cursor:pointer;text-decoration:underline;font-size:13px}
+.stats{display:flex;gap:24px;flex-wrap:wrap}
+.stat b{display:block;font-size:22px;font-variant-numeric:tabular-nums;line-height:1.2}
+.stat span{font-size:12px;color:var(--muted)}
+.stat.ok b{color:var(--ok)}.stat.w b{color:var(--warn)}
+nav.tabs{display:flex;gap:4px;margin:16px 0 20px;border-bottom:1px solid var(--line);overflow-x:auto}
+nav.tabs button{background:none;border:0;border-bottom:3px solid transparent;padding:10px 14px;cursor:pointer;color:var(--muted);font-weight:500;white-space:nowrap}
+nav.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+/* 商品管理 */
+.layout{display:grid;grid-template-columns:260px 1fr;gap:20px}
+#catSel{display:none}
+@media (max-width:820px){.layout{grid-template-columns:1fr}.tree{display:none}#catSel{display:block;flex:1 1 100%}}
+.tree{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px;align-self:start}
+.tree button{display:flex;justify-content:space-between;gap:8px;width:100%;text-align:left;background:none;border:0;padding:5px 6px;border-radius:6px;cursor:pointer;font-size:13px}
+.tree button:hover{background:var(--bg)}
+.tree button[aria-pressed="true"]{background:var(--accent-soft)}
+.tree .l1{font-weight:700;margin-top:4px}.tree .l2{padding-left:18px}
+.tree .n{font-variant-numeric:tabular-nums;color:var(--muted)}
+.tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.tools input[type=search]{flex:1;min-width:180px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.tools select,.f select{padding:7px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface);font-size:13px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden;cursor:pointer;text-align:left;padding:0;display:flex;flex-direction:column}
+.card:hover{border-color:var(--accent)}
+.card.sel{border-color:var(--accent);box-shadow:inset 0 0 0 2px var(--accent)}
+.card .ck{position:absolute;top:6px;left:6px;width:22px;height:22px;border-radius:5px;background:var(--surface);border:2px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:13px;color:#fff}
+.card.sel .ck{background:var(--accent);border-color:var(--accent)}
+.card .im{position:relative}
+.pill.pat{background:var(--weave-soft);color:var(--weave);border-color:transparent}
+.selbar{position:sticky;top:0;z-index:10;display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:var(--accent-soft);border:1px solid var(--accent);border-radius:10px;padding:8px 12px;margin-bottom:12px}
+.selbar select{padding:5px 8px;border:1px solid var(--line);border-radius:6px;background:var(--surface);font-size:13px}
+.card .im{aspect-ratio:1;background:var(--bg);display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px}
+.card .im img{width:100%;height:100%;object-fit:cover}
+.card .t{padding:8px 10px;font-size:12px;display:flex;flex-direction:column;gap:3px}
+.card .t .code{font-size:14px}
+.card .t .row{display:flex;gap:4px;flex-wrap:wrap}
+.empty{padding:28px;text-align:center;color:var(--muted);border:1px solid var(--line);border-radius:10px;background:var(--surface);grid-column:1/-1}
+/* 對話框 */
+.ov{position:fixed;inset:0;background:rgba(10,12,20,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50}
+.dlg{background:var(--surface);border-radius:12px;max-width:920px;width:100%;max-height:94%;overflow:auto;display:grid;grid-template-columns:1fr 1fr}
+@media (max-width:720px){.dlg{grid-template-columns:1fr}}
+.dimg{background:var(--bg);padding:12px;display:flex;flex-direction:column;gap:8px}
+.dimg .big{aspect-ratio:1;background:var(--surface);border-radius:6px;overflow:hidden;display:flex;align-items:center;justify-content:center;color:var(--muted)}
+.dimg .big img{width:100%;height:100%;object-fit:contain}
+.ths{display:flex;gap:6px;flex-wrap:wrap}
+.th{position:relative;width:72px;height:72px;border-radius:6px;overflow:hidden;border:2px solid transparent;cursor:pointer;background:var(--surface)}
+.th.on{border-color:var(--accent)}
+.th img{width:100%;height:100%;object-fit:cover}
+.th .x{position:absolute;top:2px;right:2px;width:20px;height:20px;border:0;border-radius:4px;background:rgba(0,0,0,.6);color:#fff;font-size:12px;cursor:pointer;line-height:1}
+.th .m{position:absolute;left:2px;bottom:2px;font-size:10px;background:var(--accent);color:#fff;border-radius:3px;padding:0 4px}
+.th.add{display:flex;align-items:center;justify-content:center;border:2px dashed var(--line);color:var(--muted);font-size:24px}
+.f{padding:18px;display:flex;flex-direction:column;gap:10px}
+.f label{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:3px}
+.f input,.f textarea,.f select{padding:7px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);font-size:14px}
+.f label.inl{flex-direction:row;align-items:center;gap:6px;font-size:14px;color:var(--ink)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.acts{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:4px}
+/* 新增照片 */
+.drop{border:2px dashed var(--line);border-radius:12px;background:var(--surface);padding:24px;display:flex;flex-wrap:wrap;gap:16px 24px;align-items:center;justify-content:space-between}
+.drop.over{border-color:var(--accent);background:var(--accent-soft)}
+.drop h2{margin:0 0 4px;font-size:18px}
+.upopts{display:flex;gap:16px 24px;flex-wrap:wrap;align-items:flex-end;margin:16px 0}
+.upopts label{font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:4px}
+.upopts select{padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);min-width:200px}
+.radio{display:flex;gap:14px;font-size:14px;color:var(--ink)}
+.radio label{flex-direction:row;align-items:center;gap:6px;color:var(--ink);font-size:14px}
+.qgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;margin-top:12px}
+.qi{background:var(--surface);border:1px solid var(--line);border-radius:8px;overflow:hidden;font-size:12px}
+.qi img{aspect-ratio:1;object-fit:cover;width:100%}
+.qi div{padding:4px 6px;display:flex;justify-content:space-between;gap:4px}
+.progress{height:6px;background:var(--line);border-radius:99px;overflow:hidden;margin:10px 0}
+.progress i{display:block;height:100%;background:var(--accent);width:0;transition:width .3s}
+/* 設定 */
+.setf{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;display:grid;gap:12px;max-width:720px}
+.setf label{font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:4px}
+.setf input,.setf textarea{padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);font-size:14px}
+.grp{border:1px solid var(--line);border-radius:8px;padding:12px 14px;margin:0;display:grid;gap:10px}
+.grp legend{font-weight:700;font-size:14px;color:var(--ink);padding:0 6px}
+.heroes{display:flex;gap:8px;flex-wrap:wrap}
+.hero{position:relative;width:180px;aspect-ratio:16/9;border-radius:6px;overflow:hidden;background:var(--bg);border:1px solid var(--line)}
+.hero img{width:100%;height:100%;object-fit:cover}
+.hero .hb{position:absolute;top:4px;display:flex;gap:4px;right:4px}
+.hero .hb button{width:24px;height:24px;border:0;border-radius:4px;background:rgba(0,0,0,.6);color:#fff;cursor:pointer;font-size:12px}
+.hero .n{position:absolute;left:4px;bottom:4px;font-size:11px;background:rgba(0,0,0,.6);color:#fff;border-radius:3px;padding:0 5px}
+.qrtop{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px}
+.qrcard{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+.qrcard h3{margin:0;font-size:16px}
+.qrbox{background:#fff;padding:8px;border-radius:8px;border:1px solid var(--line)}
+.qrbox img,.qrbox canvas{display:block;width:220px;height:220px;image-rendering:pixelated}
+.code.small{font-size:12px;font-weight:400;color:var(--muted);word-break:break-all}
+.box{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;font-size:14px;max-width:720px;margin-bottom:16px}
+.box p{margin:4px 0}
+.cattbl{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
+.cattbl td,.cattbl th{border-bottom:1px solid var(--line);padding:4px 6px;text-align:left}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;font-size:14px;z-index:60;max-width:90%}
+.busy{position:fixed;top:0;left:0;right:0;height:3px;background:var(--accent);z-index:70;animation:b 1s linear infinite}
+@keyframes b{0%{opacity:.3}50%{opacity:1}100%{opacity:.3}}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="demo" id="demoBar" hidden>示範模式：資料不會存檔。在 config.js 填入資料庫網址後才會連到真正的資料庫。</div>
+<div class="busy" id="busy" hidden></div>
+
+<!-- 登入 -->
+<form class="login" id="loginForm">
+  <h1>熊肯作織布的家後台</h1>
+  <label class="note" for="pw">後台密碼</label>
+  <input type="password" id="pw" autocomplete="current-password" required>
+  <label class="note" for="remember" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="remember"> 在這台裝置保持登入（只在自己的手機或電腦勾選）</label>
+  <button class="btn primary" type="submit" id="loginBtn">登入</button>
+  <div class="note" id="loginNote"></div>
+</form>
+
+<div id="app" hidden>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1 class="t" id="shopName">熊肯作織布的家</h1>
+      <div class="links"><span class="note">後台</span><a id="sheetLink" href="#" target="_blank" rel="noopener" hidden>開啟資料庫試算表</a><button id="reload">重新整理資料</button><button id="logout">登出</button></div>
+    </div>
+    <div class="stats">
+      <div class="stat"><b id="sTotal">0</b><span>商品總數</span></div>
+      <div class="stat ok"><b id="sListed">0</b><span>已上架</span></div>
+      <div class="stat w"><b id="sNoPhoto">0</b><span>缺照片</span></div>
+      <div class="stat w"><b id="sNoPrice">0</b><span>缺價格</span></div>
+    </div>
+  </header>
+  <nav class="tabs" role="tablist">
+    <button role="tab" aria-selected="true" data-p="pList">商品管理</button>
+    <button role="tab" aria-selected="false" data-p="pUp">新增照片</button>
+    <button role="tab" aria-selected="false" data-p="pSet">前台設定與分類</button>
+    <button role="tab" aria-selected="false" data-p="pQR">QR Code</button>
+  </nav>
+
+  <section id="pList">
+    <div class="layout">
+      <aside class="tree" id="tree" aria-label="分類統計"></aside>
+      <div>
+        <div class="tools">
+          <select id="catSel" aria-label="分類"></select>
+          <input type="search" id="q" placeholder="搜尋編碼、名稱、描述、標籤">
+          <select id="st" aria-label="狀態篩選"><option value="">全部</option><option value="listed">已上架</option><option value="unlisted">未上架</option><option value="nophoto">缺照片</option><option value="noprice">缺價格</option></select>
+          <select id="fp" aria-label="織紋篩選"></select>
+          <button class="btn small" id="selMode">多選</button>
+          <button class="btn small" id="bulkOn">篩選結果全部上架</button>
+          <button class="btn small" id="bulkOff">全部下架</button>
+          <button class="btn small" id="csv">下載 CSV</button>
+        </div>
+        <div class="selbar" id="selBar" hidden>
+          <b id="selN">已選 0 件</b>
+          <button class="btn small" id="selAll">全選目前篩選</button>
+          <span class="note">織紋設為</span><select id="selPat" aria-label="要設定的織紋"></select>
+          <input id="selCustom" placeholder="輸入織紋名稱" aria-label="自訂織紋" hidden style="padding:5px 8px;border:1px solid var(--line);border-radius:6px;background:var(--surface);font-size:13px;width:130px">
+          <button class="btn small primary" id="selApply">套用織紋</button>
+          <button class="btn small" id="selOn">上架</button>
+          <button class="btn small" id="selOff">下架</button>
+          <button class="btn small" id="selDone">完成</button>
+          <span class="note" id="selNote"></span>
+        </div>
+        <div class="note" id="listNote"></div>
+        <div class="grid" id="grid"></div>
+        <div style="text-align:center;margin-top:14px"><button class="btn" id="more" hidden>顯示更多</button></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="pUp" hidden>
+    <div class="upopts">
+      <label for="upCat">要放到哪個類別<select id="upCat"></select></label>
+      <div class="radio" role="radiogroup" aria-label="編碼方式">
+        <label for="m1"><input type="radio" name="mode" id="m1" value="each" checked> 每張照片各是一件商品</label>
+        <label for="m2"><input type="radio" name="mode" id="m2" value="one"> 全部是同一件商品的不同角度</label>
+      </div>
+    </div>
+    <div class="drop" id="drop">
+      <div><h2>拖入照片，或點右邊選擇</h2><div class="note">會自動壓縮到長邊 1600px 再上傳到 Google 雲端硬碟，並依類別給下一個編碼（例如 AB031）。</div></div>
+      <label class="btn primary" for="fileIn">選擇照片</label>
+      <input type="file" id="fileIn" accept="image/*" multiple hidden>
+    </div>
+    <div class="acts" style="margin-top:14px">
+      <button class="btn primary" id="upGo" disabled>上傳並編碼</button>
+      <button class="btn" id="upClear">清空</button>
+      <span class="note" id="upNote"></span>
+    </div>
+    <div class="progress" id="upProg" hidden><i></i></div>
+    <div class="qgrid" id="qgrid"></div>
+  </section>
+
+  <section id="pSet" hidden>
+    <div class="box">
+      <p><b>前台設定</b>：這裡改的內容會顯示在前台，存檔後約 5 分鐘內更新（試算表選單「清除前台快取」可立即更新）。</p>
+    </div>
+    <form class="setf" id="setForm">
+      <fieldset class="grp"><legend>基本資料</legend>
+        <label for="s_店名">店名<input id="s_店名" data-k="店名"></label>
+        <label for="s_標語">標語（店名下方小字）<input id="s_標語" data-k="標語"></label>
+        <label for="s_公告">頂部公告（留空不顯示）<input id="s_公告" data-k="公告"></label>
+        <label for="s_頁尾">頁尾文字<input id="s_頁尾" data-k="頁尾"></label>
+        <label for="s_前台網址">前台網址（產生 QR Code 用，例如 https://tminunpuli.github.io/shop/）<input id="s_前台網址" data-k="前台網址" type="url"></label>
+      </fieldset>
+
+      <fieldset class="grp"><legend>首頁形象圖（Banner）</legend>
+        <div class="note">建議用橫式照片，寬 1600px 以上。可放多張，會每 6 秒自動輪播；沒有照片時顯示藍染條紋底。</div>
+        <div class="heroes" id="heroList"></div>
+        <div class="acts" style="margin:0"><label class="btn small" for="heroIn">＋ 上傳形象圖</label><input type="file" id="heroIn" accept="image/*" multiple hidden><span class="note" id="heroNote"></span></div>
+        <input type="hidden" id="s_形象圖" data-k="形象圖">
+        <label for="s_形象小標">小標（標題上方的紅色小字）<input id="s_形象小標" data-k="形象小標" placeholder="手織 · 工房"></label>
+        <label for="s_形象標題">大標題（留空則顯示店名）<input id="s_形象標題" data-k="形象標題" placeholder="一線一線，織進日常"></label>
+        <label for="s_形象副標">副標（留空則顯示標語）<textarea id="s_形象副標" data-k="形象副標" rows="2"></textarea></label>
+      </fieldset>
+
+      <fieldset class="grp"><legend>關於我們</legend>
+        <label for="s_店家介紹">店家介紹<textarea id="s_店家介紹" data-k="店家介紹" rows="5"></textarea></label>
+        <label for="s_地址">地址（前台會連到 Google 地圖）<input id="s_地址" data-k="地址"></label>
+        <label for="s_營業時間">營業時間（可換行）<textarea id="s_營業時間" data-k="營業時間" rows="2" placeholder="週二至週六 10:00–17:00&#10;週日、週一公休"></textarea></label>
+        <div class="two">
+          <label for="s_電話">電話<input id="s_電話" data-k="電話" type="tel"></label>
+          <label for="s_Email">Email<input id="s_Email" data-k="Email" type="email"></label>
+        </div>
+        <label for="s_LINE">LINE（貼加好友連結 https://… 會變成按鈕；只填 ID 會顯示文字）<input id="s_LINE" data-k="LINE"></label>
+        <div class="two">
+          <label for="s_Facebook">Facebook 連結（https://）<input id="s_Facebook" data-k="Facebook" type="url"></label>
+          <label for="s_Instagram">Instagram 連結（https://）<input id="s_Instagram" data-k="Instagram" type="url"></label>
+        </div>
+        <div class="note">沒填的項目前台不會顯示；整個區塊都沒填時，「關於我們」會隱藏。</div>
+      </fieldset>
+
+      <fieldset class="grp"><legend>詢問購買</legend>
+        <label for="s_聯絡說明">按下「詢問購買」時顯示的說明<textarea id="s_聯絡說明" data-k="聯絡說明" rows="3"></textarea></label>
+        <div class="two">
+          <label for="s_聯絡按鈕文字">聯絡按鈕文字<input id="s_聯絡按鈕文字" data-k="聯絡按鈕文字" placeholder="例：LINE 詢問"></label>
+          <label for="s_聯絡連結">聯絡連結（https://）<input id="s_聯絡連結" data-k="聯絡連結" type="url"></label>
+        </div>
+      </fieldset>
+
+      <fieldset class="grp"><legend>後台用</legend>
+        <label for="s_織紋選項">織紋選項（逗號分隔，商品編輯的下拉選單用）<input id="s_織紋選項" data-k="織紋選項"></label>
+      </fieldset>
+      <div class="acts"><button class="btn primary" type="submit">儲存前台設定</button><span class="note" id="setNote"></span></div>
+    </form>
+    <div class="box" style="margin-top:20px">
+      <p><b>分類</b>：要新增、改名或在前台隱藏某個類別，請在資料庫試算表的「分類」分頁修改，改完按「重新整理資料」。類別代碼是兩個英文字母，商品編碼就是類別代碼加三位數。</p>
+      <table class="cattbl" id="catTbl"></table>
+    </div>
+  </section>
+
+  <section id="pQR" hidden>
+    <div class="qrtop">
+      <div class="qrcard">
+        <h3>後台 QR Code</h3>
+        <div class="note">用手機掃描就能開啟後台，登入後可以拍照上傳、改價格、上下架。</div>
+        <div class="qrbox" id="qrAdmin"></div>
+        <div class="code small" id="qrAdminUrl"></div>
+        <div class="acts"><button class="btn small" id="qrAdminDl">下載 PNG</button><button class="btn small" id="qrAdminCopy">複製連結</button></div>
+        <div class="note" id="qrAdminNote"></div>
+      </div>
+      <div class="qrcard">
+        <h3>前台 QR Code</h3>
+        <div class="note">給客人掃，開啟商店。前台網址在「前台設定與分類 → 基本資料」填寫。</div>
+        <div class="qrbox" id="qrShop"></div>
+        <div class="code small" id="qrShopUrl"></div>
+        <div class="acts"><button class="btn small" id="qrShopDl">下載 PNG</button></div>
+      </div>
+    </div>
+  </section>
+</div>
+</div>
+
+<!-- 商品編輯 -->
+<div class="ov" id="ov" hidden>
+  <div class="dlg" role="dialog" aria-modal="true" aria-labelledby="dCode">
+    <div class="dimg">
+      <div class="big" id="dBig"></div>
+      <div class="ths" id="dThs"></div>
+      <input type="file" id="addPhoto" accept="image/*" multiple hidden>
+      <div class="note">點縮圖可預覽；第一張是主圖，點「設為主圖」可調整。移除只是從商品拿掉，雲端檔案仍保留。</div>
+    </div>
+    <form class="f" id="dForm">
+      <div class="acts" style="justify-content:space-between;margin:0"><span class="code" id="dCode" style="font-size:20px"></span><button type="button" class="btn small" id="dClose">關閉</button></div>
+      <label for="dCat">類別<select id="dCat"></select></label>
+      <div class="note" id="dRecode"></div>
+      <label for="dName">商品名稱<input id="dName" placeholder="留空則顯示「織紋＋類別」"></label>
+      <div class="two">
+        <label for="dPrice">價格（NT$）<input id="dPrice" type="number" min="0" step="1" placeholder="留空＝價格洽詢"></label>
+        <label for="dStatus">狀態<select id="dStatus"><option>現貨</option><option>預購</option><option>售完</option></select></label>
+      </div>
+      <label for="dPat">織紋<select id="dPat"></select></label>
+      <input id="dPatCustom" placeholder="輸入織紋名稱" aria-label="自訂織紋" hidden>
+      <label for="dDesc">商品介紹<textarea id="dDesc" rows="3"></textarea></label>
+      <label for="dTags">標籤（逗號分隔）<input id="dTags"></label>
+      <label class="inl" for="dListed"><input type="checkbox" id="dListed"> 上架到前台</label>
+      <div class="acts">
+        <button class="btn primary" type="submit" id="dSave">儲存</button>
+        <span style="flex:1"></span>
+        <label class="inl note" for="dTrash" style="font-size:12px;flex-direction:row;color:var(--muted)"><input type="checkbox" id="dTrash"> 連同雲端照片刪除</label>
+        <button type="button" class="btn danger" id="dDel">刪除商品</button>
+      </div>
+      <div class="note" id="dNote"></div>
+    </form>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+"use strict";
+const API=(window.SHOP_API_URL||"").trim();
+const DEMO=!API;
+let KEY="";
+let DATA={settings:{},categories:[],products:[]};
+let fCat="",shown=120;
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function toast(t,ms=3000){const e=$("toast");e.textContent=t;e.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>e.hidden=true,ms)}
+let busyN=0;function busy(on){busyN+=on?1:-1;$("busy").hidden=busyN<=0}
+const store={
+  get(k){try{return sessionStorage.getItem(k)||localStorage.getItem(k)}catch{return null}},
+  set(k,v,keep){try{sessionStorage.setItem(k,v);if(keep)localStorage.setItem(k,v)}catch{}},
+  del(k){try{sessionStorage.removeItem(k);localStorage.removeItem(k)}catch{}}
+};
+
+/* ---------- 照片網址 ---------- */
+const isURL=id=>/^(data:|blob:|https?:)/.test(id||"");
+function imgTag(id,w,alt){
+  if(!id) return "";
+  if(isURL(id)) return `<img src="${esc(id)}" alt="${esc(alt||"")}" loading="lazy">`;
+  return `<img src="https://lh3.googleusercontent.com/d/${esc(id)}=w${w}" alt="${esc(alt||"")}" loading="lazy" onerror="this.onerror=null;this.src='https://drive.google.com/thumbnail?id=${esc(id)}&sz=w${w}'">`;
+}
+
+/* ---------- API ---------- */
+async function api(action,payload={}){
+  if(DEMO) return demoApi(action,payload);
+  busy(true);
+  try{
+    const r=await fetch(API,{method:"POST",body:JSON.stringify(Object.assign({action,key:KEY},payload))});
+    const d=await r.json();
+    if(!d.ok){if(d.auth===false&&action!=="login")logout();throw new Error(d.error||"操作失敗")}
+    return d;
+  }catch(e){
+    if(e instanceof TypeError) throw new Error("連不到資料庫，請檢查網路或 config.js 的網址");
+    throw e;
+  }finally{busy(false)}
+}
+
+/* ---------- 登入 ---------- */
+$("loginForm").addEventListener("submit",async e=>{
+  e.preventDefault();
+  KEY=$("pw").value;
+  $("loginBtn").disabled=true;$("loginNote").textContent="登入中…";$("loginNote").className="note";
+  try{await api("login");store.set("wkey",KEY,$("remember").checked);await enter()}
+  catch(err){$("loginNote").textContent=err.message;$("loginNote").className="note err"}
+  finally{$("loginBtn").disabled=false}
+});
+function logout(){store.del("wkey");KEY="";$("app").hidden=true;$("loginForm").hidden=false;$("pw").value=""}
+$("logout").onclick=logout;
+async function enter(){
+  $("loginForm").hidden=true;$("app").hidden=false;
+  await load();
+}
+async function load(){
+  try{
+    const d=await api("list");
+    DATA={settings:d.settings||{},categories:d.categories||[],products:d.products||[],sheetUrl:d.sheetUrl};
+    if(DATA.sheetUrl){$("sheetLink").href=DATA.sheetUrl;$("sheetLink").hidden=false}
+    renderAll();
+  }catch(e){toast(e.message,5000)}
+}
+$("reload").onclick=load;
+
+/* ---------- 分頁 ---------- */
+document.querySelectorAll("nav.tabs button").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll("nav.tabs button").forEach(x=>x.setAttribute("aria-selected",x===b));
+  ["pList","pUp","pSet","pQR"].forEach(id=>$(id).hidden=id!==b.dataset.p);
+  if(b.dataset.p==="pSet") fillSettings();
+  if(b.dataset.p==="pQR") renderQR();
+});
+
+/* ---------- 共用 ---------- */
+const catOf=code=>DATA.categories.find(c=>c.code===code);
+const catLabel=code=>{const c=catOf(code);return c?c.mainName+" › "+c.name:code};
+const hasPrice=p=>p.price!==null&&p.price!==""&&p.price!==undefined&&!isNaN(p.price);
+function catOptions(sel){
+  let h="",last="";
+  for(const c of DATA.categories){
+    if(c.main!==last){if(last)h+="</optgroup>";h+=`<optgroup label="${esc(c.main+" "+c.mainName)}">`;last=c.main}
+    h+=`<option value="${esc(c.code)}"${c.code===sel?" selected":""}>${esc(c.code+" "+c.name)}</option>`;
+  }
+  return h+(last?"</optgroup>":"");
+}
+const DEFAULT_PATS="平織,斜紋織,菱紋織,菱形紋,山形紋,線條紋,神話故事";
+// 織紋清單：設定裡的「織紋選項」（沒填就用預設）＋商品上已經用過的織紋
+function patList(){
+  const base=String(DATA.settings["織紋選項"]||"").trim()||DEFAULT_PATS;
+  return [...new Set([...base.split(/[,，、]/).map(s=>s.trim()).filter(Boolean),...DATA.products.map(p=>p.pattern).filter(Boolean)])];
+}
+function patOptions(sel){
+  const opts=patList();
+  if(sel&&!opts.includes(sel)) opts.push(sel);
+  return `<option value="">（無）</option>`+opts.map(o=>`<option value="${esc(o)}"${o===sel?" selected":""}>${esc(o)}</option>`).join("")+`<option value="__custom">其他（自己輸入）…</option>`;
+}
+function renderAll(){
+  $("shopName").textContent=(DATA.settings["店名"]||"熊肯作織布的家");
+  const P=DATA.products;
+  $("sTotal").textContent=P.length;
+  $("sListed").textContent=P.filter(p=>p.listed).length;
+  $("sNoPhoto").textContent=P.filter(p=>!p.photos.length).length;
+  $("sNoPrice").textContent=P.filter(p=>!hasPrice(p)).length;
+  $("upCat").innerHTML=catOptions($("upCat").value||(DATA.categories[0]||{}).code);
+  {
+    const cur=$("fp").value;
+    const opts=patList();
+    const none=P.filter(p=>!p.pattern).length;
+    $("fp").innerHTML=`<option value="">全部織紋</option><option value="__none">未設定織紋（${none}）</option>`+opts.map(o=>`<option value="${esc(o)}">${esc(o)}（${P.filter(p=>p.pattern===o).length}）</option>`).join("");
+    $("fp").value=[...$("fp").options].some(o=>o.value===cur)?cur:"";
+  }
+  renderTree();renderList();
+}
+
+/* ---------- 商品管理 ---------- */
+function renderTree(){
+  const P=DATA.products;
+  let h=`<button class="l1" data-k="" aria-pressed="${fCat===""}"><span>全部</span><span class="n">${P.length}</span></button>`;
+  let last="";
+  for(const c of DATA.categories){
+    if(c.main!==last){last=c.main;const n=P.filter(p=>p.cat.startsWith(c.main)).length;h+=`<button class="l1" data-k="${esc(c.main)}" aria-pressed="${fCat===c.main}"><span>${esc(c.main+" "+c.mainName)}</span><span class="n">${n}</span></button>`}
+    const n=P.filter(p=>p.cat===c.code).length;
+    h+=`<button class="l2" data-k="${esc(c.code)}" aria-pressed="${fCat===c.code}"><span>${esc(c.code+" "+c.name)}${c.show?"":" <span class='pill'>前台隱藏</span>"}</span><span class="n">${n}</span></button>`;
+  }
+  $("tree").innerHTML=h;
+  let o=`<option value="">全部分類（${P.length}）</option>`,lm="";
+  for(const c of DATA.categories){
+    if(c.main!==lm){lm=c.main;o+=`<option value="${esc(c.main)}">${esc(c.main+" "+c.mainName)}（${P.filter(p=>p.cat.startsWith(c.main)).length}）</option>`}
+    o+=`<option value="${esc(c.code)}">　${esc(c.code+" "+c.name)}（${P.filter(p=>p.cat===c.code).length}）</option>`;
+  }
+  $("catSel").innerHTML=o;$("catSel").value=fCat;
+  $("tree").querySelectorAll("button").forEach(b=>b.onclick=()=>{fCat=b.dataset.k;shown=120;renderTree();renderList()});
+}
+function filtered(){
+  const q=$("q").value.trim().toLowerCase(),st=$("st").value;
+  return DATA.products.filter(p=>{
+    if(fCat&&!(fCat.length===1?p.cat.startsWith(fCat):p.cat===fCat)) return false;
+    if(st==="listed"&&!p.listed) return false;
+    if(st==="unlisted"&&p.listed) return false;
+    if(st==="nophoto"&&p.photos.length) return false;
+    if(st==="noprice"&&hasPrice(p)) return false;
+    const fp=$("fp").value;
+    if(fp==="__none"&&p.pattern) return false;
+    if(fp&&fp!=="__none"&&p.pattern!==fp) return false;
+    if(q&&![p.code,p.name,p.desc,(p.tags||[]).join(" "),p.pattern].join(" ").toLowerCase().includes(q)) return false;
+    return true;
+  }).sort((a,b)=>a.code.localeCompare(b.code,"en",{numeric:true}));
+}
+function renderList(){
+  const l=filtered(),g=$("grid");
+  $("listNote").textContent=DATA.products.length?`顯示 ${Math.min(shown,l.length)} / ${l.length} 件`:"";
+  if(!DATA.products.length){g.innerHTML=`<div class="empty">還沒有商品。到「新增照片」上傳，或在試算表選單執行「匯入舊的產品分類表」。</div>`;$("more").hidden=true;return}
+  if(!l.length){g.innerHTML=`<div class="empty">沒有符合條件的商品。</div>`;$("more").hidden=true;return}
+  g.innerHTML=l.slice(0,shown).map(p=>`<button class="card${selMode&&sel.has(p.code)?" sel":""}" data-code="${esc(p.code)}">
+    <span class="im">${p.photos.length?imgTag(p.photos[0],400,p.code):"沒有照片"}${selMode?`<span class="ck">${sel.has(p.code)?"✓":""}</span>`:""}</span>
+    <span class="t"><b class="code">${esc(p.code)}</b><span>${esc(p.name||catLabel(p.cat))}</span>
+    <span class="row">${p.listed?'<span class="pill ok">已上架</span>':'<span class="pill">未上架</span>'}${hasPrice(p)?`<span class="pill">NT$ ${Number(p.price).toLocaleString()}</span>`:'<span class="pill warn">缺價格</span>'}${p.status!=="現貨"?`<span class="pill bad">${esc(p.status)}</span>`:""}${p.pattern?`<span class="pill pat">${esc(p.pattern)}</span>`:""}${p.photos.length>1?`<span class="pill">${p.photos.length} 張</span>`:""}</span></span></button>`).join("");
+  g.querySelectorAll(".card").forEach(b=>b.onclick=()=>{
+    if(!selMode) return openEdit(b.dataset.code);
+    const c=b.dataset.code;sel.has(c)?sel.delete(c):sel.add(c);
+    b.classList.toggle("sel",sel.has(c));b.querySelector(".ck").textContent=sel.has(c)?"✓":"";updSel();
+  });
+  $("more").hidden=l.length<=shown;$("more").textContent=`顯示更多（還有 ${l.length-shown} 件）`;
+}
+$("q").oninput=()=>{shown=120;renderList()};
+$("st").onchange=()=>{shown=120;renderList()};
+$("catSel").onchange=()=>{fCat=$("catSel").value;shown=120;renderTree();renderList()};
+$("fp").onchange=()=>{shown=120;renderList()};
+
+/* ---------- 多選：批次設定織紋、上下架 ---------- */
+let selMode=false;const sel=new Set();
+function updSel(){$("selN").textContent=`已選 ${sel.size} 件`;["selApply","selOn","selOff"].forEach(id=>$(id).disabled=!sel.size)}
+function setSelMode(on){
+  selMode=on;sel.clear();$("selBar").hidden=!on;$("selMode").textContent=on?"取消多選":"多選";$("selNote").textContent="";
+  if(on){$("selPat").innerHTML=`<option value="" disabled selected>選擇織紋</option>`+patOptions("").replace('<option value="">（無）</option>',"")+`<option value="__clear">（清除織紋）</option>`;$("selCustom").hidden=true;$("selCustom").value=""}
+  updSel();renderList();
+}
+$("selMode").onclick=()=>setSelMode(!selMode);
+$("selDone").onclick=()=>setSelMode(false);
+$("selAll").onclick=()=>{filtered().forEach(p=>sel.add(p.code));updSel();renderList()};
+async function selRun(label,change){
+  const list=DATA.products.filter(p=>sel.has(p.code));
+  if(!list.length)return;
+  ["selApply","selOn","selOff","selAll","selDone"].forEach(id=>$(id).disabled=true);
+  let n=0,fail=0;
+  for(const p of list){
+    $("selNote").textContent=`${label}中 ${++n}/${list.length}…`;
+    const np=Object.assign({},p,change(p));
+    if(np.listed&&!np.photos.length){fail++;continue}
+    try{await api("save",{product:np});Object.assign(p,np)}catch(e){fail++}
+  }
+  ["selAll","selDone"].forEach(id=>$(id).disabled=false);
+  $("selNote").textContent=fail?`完成，${fail} 件失敗（沒照片的不能上架）`:`已完成 ${list.length} 件`;
+  sel.clear();updSel();renderAll();
+}
+$("selPat").onchange=()=>{$("selCustom").hidden=$("selPat").value!=="__custom";if(!$("selCustom").hidden)$("selCustom").focus()};
+$("selApply").onclick=()=>{
+  let v=$("selPat").value;
+  if(!v){$("selNote").textContent="請先選擇織紋";return}
+  if(v==="__custom"){v=$("selCustom").value.trim();if(!v){$("selNote").textContent="請輸入織紋名稱";return}}
+  if(v==="__clear")v="";
+  selRun(v?`設定織紋「${v}」`:"清除織紋",()=>({pattern:v}));
+};
+$("selOn").onclick=()=>selRun("上架",()=>({listed:true}));
+$("selOff").onclick=()=>selRun("下架",()=>({listed:false}));
+$("more").onclick=()=>{shown+=120;renderList()};
+async function bulk(on){
+  const codes=filtered().filter(p=>p.listed!==on&&(!on||p.photos.length)).map(p=>p.code);
+  if(!codes.length){toast(on?"篩選結果都已上架（沒照片的不會上架）":"篩選結果都未上架");return}
+  try{const d=await api("bulk",{codes,listed:on});toast(`${d.count??codes.length} 件已${on?"上架":"下架"}`);await load()}catch(e){toast(e.message)}
+}
+$("bulkOn").onclick=()=>bulk(true);
+$("bulkOff").onclick=()=>bulk(false);
+$("csv").onclick=()=>{
+  const cols=[["編碼","code"],["大類",p=>(catOf(p.cat)||{}).mainName||""],["類別",p=>(catOf(p.cat)||{}).name||p.cat],["商品名稱","name"],["價格","price"],["狀態","status"],["上架",p=>p.listed?"是":"否"],["織紋","pattern"],["描述","desc"],["標籤",p=>(p.tags||[]).join("、")],["照片數",p=>p.photos.length],["照片連結",p=>p.photos.filter(x=>!isURL(x)).map(id=>"https://drive.google.com/file/d/"+id+"/view").join(" ")]];
+  const cell=v=>{v=String(v??"");return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
+  const csv="﻿"+[cols.map(c=>c[0]).join(","),...filtered().map(p=>cols.map(([,k])=>cell(typeof k==="function"?k(p):p[k])).join(","))].join("\n");
+  const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));a.download=`商品資料_${new Date().toISOString().slice(0,10)}.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+};
+
+/* ---------- 編輯 ---------- */
+let cur=null,curPhotos=[],curIdx=0,delArm=false;
+function openEdit(code){
+  const p=DATA.products.find(x=>x.code===code);if(!p)return;
+  cur=p;curPhotos=[...p.photos];curIdx=0;delArm=false;$("dDel").textContent="刪除商品";$("dTrash").checked=false;
+  $("dCode").textContent=p.code;
+  $("dCat").innerHTML=catOptions(p.cat);
+  $("dRecode").textContent="";
+  $("dName").value=p.name||"";$("dPrice").value=hasPrice(p)?p.price:"";$("dStatus").value=p.status||"現貨";
+  $("dPat").innerHTML=patOptions(p.pattern||"");$("dPatCustom").hidden=true;$("dPatCustom").value="";
+  $("dDesc").value=p.desc||"";$("dTags").value=(p.tags||[]).join("、");$("dListed").checked=!!p.listed;
+  $("dNote").textContent="";
+  drawPhotos();
+  $("ov").hidden=false;$("dName").focus();
+}
+function drawPhotos(){
+  $("dBig").innerHTML=curPhotos.length?imgTag(curPhotos[curIdx]||curPhotos[0],1200,cur.code):"沒有照片";
+  $("dThs").innerHTML=curPhotos.map((id,k)=>`<div class="th${k===curIdx?" on":""}" data-k="${k}">${imgTag(id,200,"")}${k===0?'<span class="m">主圖</span>':""}<button type="button" class="x" data-x="${k}" aria-label="移除這張">✕</button></div>`).join("")+`<label class="th add" for="addPhoto" title="加照片">＋</label>`;
+  $("dThs").querySelectorAll(".th[data-k]").forEach(el=>el.onclick=e=>{if(e.target.dataset.x!==undefined)return;curIdx=+el.dataset.k;drawPhotos()});
+  $("dThs").querySelectorAll(".x").forEach(b=>b.onclick=()=>{curPhotos.splice(+b.dataset.x,1);curIdx=0;drawPhotos()});
+  if(curPhotos.length>1&&curIdx>0){const b=document.createElement("button");b.type="button";b.className="btn small";b.textContent="設為主圖";b.onclick=()=>{const [x]=curPhotos.splice(curIdx,1);curPhotos.unshift(x);curIdx=0;drawPhotos()};$("dThs").appendChild(b)}
+}
+$("addPhoto").onchange=async e=>{
+  const files=[...e.target.files];e.target.value="";
+  if(!files.length||!cur)return;
+  $("dNote").textContent=`上傳 ${files.length} 張中…`;$("dNote").className="note";
+  try{
+    for(const f of files){const id=await uploadFile(f,cur.code);curPhotos.push(id)}
+    $("dNote").textContent="照片已上傳，記得按「儲存」";drawPhotos();
+  }catch(err){$("dNote").textContent=err.message;$("dNote").className="note err"}
+};
+$("dPat").onchange=()=>{$("dPatCustom").hidden=$("dPat").value!=="__custom";if(!$("dPatCustom").hidden)$("dPatCustom").focus()};
+$("dCat").onchange=()=>{const c=$("dCat").value;$("dRecode").textContent=c!==cur.cat?`換類別後會改成新編碼（${c}xxx），舊編碼 ${cur.code} 會刪除`:""};
+function closeEdit(){$("ov").hidden=true;cur=null}
+$("dClose").onclick=closeEdit;
+$("ov").addEventListener("click",e=>{if(e.target===$("ov"))closeEdit()});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("ov").hidden)closeEdit()});
+$("dForm").addEventListener("submit",async e=>{
+  e.preventDefault();if(!cur)return;
+  const pv=$("dPrice").value.trim();
+  const p={code:cur.code,cat:$("dCat").value,name:$("dName").value.trim(),price:pv===""?null:Math.max(0,Math.round(+pv||0)),
+    status:$("dStatus").value,pattern:$("dPat").value==="__custom"?$("dPatCustom").value.trim():$("dPat").value,desc:$("dDesc").value.trim(),
+    tags:$("dTags").value.split(/[,，、]/).map(s=>s.trim()).filter(Boolean),photos:curPhotos,listed:$("dListed").checked};
+  if(p.listed&&!p.photos.length){$("dNote").textContent="沒有照片的商品不能上架";$("dNote").className="note err";return}
+  $("dSave").disabled=true;
+  try{
+    if(p.cat!==cur.cat){
+      const old=cur.code;p.code="";
+      const d=await api("save",{product:p});
+      await api("delete",{code:old,trashPhotos:false});
+      toast(`已改到新類別，新編碼 ${d.product.code}`);
+    } else {await api("save",{product:p});toast("已儲存")}
+    closeEdit();await load();
+  }catch(err){$("dNote").textContent=err.message;$("dNote").className="note err"}
+  finally{$("dSave").disabled=false}
+});
+$("dDel").onclick=async()=>{
+  if(!cur)return;
+  if(!delArm){delArm=true;$("dDel").textContent="再按一次確認刪除";return}
+  try{await api("delete",{code:cur.code,trashPhotos:$("dTrash").checked});toast(`已刪除 ${cur.code}`);closeEdit();await load()}
+  catch(err){$("dNote").textContent=err.message;$("dNote").className="note err"}
+};
+
+/* ---------- 上傳 ---------- */
+function resize(file,max=1600,q=.85){
+  return new Promise(async(res,rej)=>{
+    try{
+      const bmp=await createImageBitmap(file);
+      const s=Math.min(1,max/Math.max(bmp.width,bmp.height));
+      const c=document.createElement("canvas");c.width=Math.round(bmp.width*s);c.height=Math.round(bmp.height*s);
+      const x=c.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,c.width,c.height);x.drawImage(bmp,0,0,c.width,c.height);
+      res(c.toDataURL("image/jpeg",q));
+    }catch(e){rej(new Error(/heic|heif/i.test(file.name)?`${file.name}：HEIC 無法讀取，請先轉成 JPG`:`${file.name}：無法讀取這張圖片`))}
+  });
+}
+async function uploadFile(file,code){
+  const dataUrl=await resize(file);
+  if(DEMO) return dataUrl;
+  const d=await api("upload",{code,mime:"image/jpeg",data:dataUrl.split(",")[1]});
+  return d.id;
+}
+let upQueue=[];
+const drop=$("drop");
+["dragenter","dragover"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add("over")}));
+["dragleave","drop"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove("over")}));
+drop.addEventListener("drop",e=>addUp([...e.dataTransfer.files]));
+$("fileIn").onchange=e=>{addUp([...e.target.files]);e.target.value=""};
+function addUp(files){
+  files=files.filter(f=>/^image\//.test(f.type)||/\.(jpe?g|png|webp|heic|heif)$/i.test(f.name));
+  files.forEach(f=>upQueue.push({file:f,url:URL.createObjectURL(f),status:"待上傳"}));
+  drawUp();
+}
+function drawUp(){
+  $("qgrid").innerHTML=upQueue.map((u,i)=>`<div class="qi"><img src="${esc(u.url)}" alt=""><div><span class="code">${esc(u.code||"")}</span><span class="note">${esc(u.status)}</span></div></div>`).join("");
+  const n=upQueue.filter(u=>u.status==="待上傳").length;
+  $("upGo").disabled=!n;$("upGo").textContent=n?`上傳並編碼（${n} 張）`:"上傳並編碼";
+  if(!$("upNote").dataset.lock)$("upNote").textContent=n?`${n} 張待上傳到「${catLabel($("upCat").value)}」`:"";
+}
+$("upCat").onchange=drawUp;
+$("upClear").onclick=()=>{upQueue=[];$("upNote").textContent="";drawUp()};
+$("upGo").onclick=async()=>{
+  const cat=$("upCat").value,mode=document.querySelector("input[name=mode]:checked").value;
+  const todo=upQueue.filter(u=>u.status==="待上傳");if(!todo.length||!cat)return;
+  const groups=mode==="one"?[todo]:todo.map(u=>[u]);
+  $("upGo").disabled=true;$("upNote").dataset.lock="1";
+  const prog=$("upProg");prog.hidden=false;let done=0,fail=0;
+  for(const g of groups){
+    try{
+      const d=await api("save",{product:{code:"",cat,name:"",price:null,status:"現貨",pattern:"",desc:"",tags:[],photos:[],listed:false}});
+      const code=d.product.code;const ids=[];
+      for(const u of g){u.code=code;u.status="上傳中";drawUp();try{ids.push(await uploadFile(u.file,code));u.status="完成"}catch(e){u.status="失敗";fail++}done++;prog.firstElementChild.style.width=(done/todo.length*100)+"%";$("upNote").textContent=`上傳中 ${done}/${todo.length}`}
+      await api("save",{product:Object.assign({},d.product,{code,photos:ids})});
+    }catch(e){g.forEach(u=>{if(u.status!=="完成")u.status="失敗"});fail+=g.length;toast(e.message,5000)}
+    drawUp();
+  }
+  delete $("upNote").dataset.lock;prog.hidden=true;
+  $("upNote").textContent=fail?`完成，但有 ${fail} 張失敗`:`${todo.length} 張已上傳並編碼，預設未上架，請到「商品管理」填價格後上架`;
+  await load();drawUp();
+};
+
+/* ---------- 設定 ---------- */
+let heroIds=[];
+function drawHeroes(){
+  $("s_形象圖").value=heroIds.join("\n");
+  $("heroList").innerHTML=heroIds.length?heroIds.map((id,i)=>`<div class="hero">${imgTag(id,480,"形象圖 "+(i+1))}<span class="n">${i+1}</span><span class="hb">${i?`<button type="button" data-up="${i}" title="往前移" aria-label="往前移">←</button>`:""}<button type="button" data-rm="${i}" title="移除" aria-label="移除">✕</button></span></div>`).join(""):`<span class="note">尚未設定形象圖</span>`;
+  $("heroList").querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>{heroIds.splice(+b.dataset.rm,1);drawHeroes();$("heroNote").textContent="記得按「儲存前台設定」"});
+  $("heroList").querySelectorAll("[data-up]").forEach(b=>b.onclick=()=>{const i=+b.dataset.up;[heroIds[i-1],heroIds[i]]=[heroIds[i],heroIds[i-1]];drawHeroes();$("heroNote").textContent="記得按「儲存前台設定」"});
+}
+$("heroIn").onchange=async e=>{
+  const files=[...e.target.files];e.target.value="";
+  if(!files.length)return;
+  const note=$("heroNote");note.className="note";
+  let n=0;
+  for(const f of files){
+    note.textContent=`上傳中 ${++n}/${files.length}…`;
+    try{
+      const dataUrl=await resize(f,2400,.85);
+      const id=DEMO?dataUrl:(await api("upload",{code:"形象圖",mime:"image/jpeg",data:dataUrl.split(",")[1]})).id;
+      heroIds.push(id);drawHeroes();
+    }catch(err){note.textContent=err.message;note.className="note err";return}
+  }
+  note.textContent="已上傳，記得按「儲存前台設定」";
+};
+function fillSettings(){
+  document.querySelectorAll("#setForm [data-k]").forEach(el=>el.value=DATA.settings[el.dataset.k]||"");
+  if(!$("s_織紋選項").value.trim())$("s_織紋選項").value=DEFAULT_PATS;
+  heroIds=String(DATA.settings["形象圖"]||"").split(/[\n,，]+/).map(s=>s.trim()).filter(Boolean);
+  drawHeroes();$("heroNote").textContent="";
+  $("catTbl").innerHTML=`<tr><th>大類</th><th>代碼</th><th>類別</th><th>前台</th><th>件數</th></tr>`+DATA.categories.map(c=>`<tr><td>${esc(c.main+" "+c.mainName)}</td><td class="code">${esc(c.code)}</td><td>${esc(c.name)}</td><td>${c.show?"顯示":"隱藏"}</td><td>${DATA.products.filter(p=>p.cat===c.code).length}</td></tr>`).join("");
+}
+$("setForm").addEventListener("submit",async e=>{
+  e.preventDefault();
+  const s={};document.querySelectorAll("#setForm [data-k]").forEach(el=>s[el.dataset.k]=el.value.trim());
+  const bad=["聯絡連結","Facebook","Instagram"].find(k=>s[k]&&!/^https:\/\//i.test(s[k]));
+  const err=bad?`${bad} 要以 https:// 開頭`:(s["Email"]&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s["Email"]))?"Email 格式不正確":(s["LINE"]&&/^http:/i.test(s["LINE"]))?"LINE 連結要以 https:// 開頭":"";
+  if(err){$("setNote").textContent=err;$("setNote").className="note err";return}
+  try{await api("settings",{settings:s});Object.assign(DATA.settings,s);$("setNote").textContent="已儲存";$("setNote").className="note";renderAll()}
+  catch(err){$("setNote").textContent=err.message;$("setNote").className="note err"}
+});
+
+/* ---------- QR Code ---------- */
+function qrCanvas(text,px){
+  if(typeof qrcode!=="function") throw new Error("QR Code 元件載入失敗，請確認網路後重新整理");
+  if(qrcode.stringToBytesFuncs&&qrcode.stringToBytesFuncs["UTF-8"]) qrcode.stringToBytes=qrcode.stringToBytesFuncs["UTF-8"];
+  const q=qrcode(0,"M");q.addData(text);q.make();
+  const n=q.getModuleCount(),m=4,cell=Math.max(1,Math.floor(px/(n+m*2))),size=cell*(n+m*2);
+  const c=document.createElement("canvas");c.width=c.height=size;
+  const x=c.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,size,size);x.fillStyle="#000";
+  for(let r=0;r<n;r++)for(let k=0;k<n;k++)if(q.isDark(r,k))x.fillRect((k+m)*cell,(r+m)*cell,cell,cell);
+  return c;
+}
+function showQR(box,urlEl,url,empty){
+  if(!url){$(box).innerHTML=`<div class="note" style="width:220px;padding:20px 8px">${esc(empty)}</div>`;$(urlEl).textContent="";return false}
+  try{const c=qrCanvas(url,1024);$(box).innerHTML="";$(box).appendChild(c);$(urlEl).textContent=url;return true}
+  catch(e){$(box).innerHTML=`<div class="note err" style="width:220px;padding:20px 8px">${esc(e.message)}</div>`;return false}
+}
+function dlQR(url,name){
+  try{const a=document.createElement("a");a.href=qrCanvas(url,1024).toDataURL("image/png");a.download=name;a.click()}catch(e){toast(e.message)}
+}
+const adminURL=()=>/^https?:$/.test(location.protocol)?location.origin+location.pathname:"";
+const shopURL=()=>{const u=String(DATA.settings["前台網址"]||"").trim();return /^https?:\/\//i.test(u)?u:""};
+function renderQR(){
+  const a=adminURL();
+  const okA=showQR("qrAdmin","qrAdminUrl",a,"現在是從電腦裡的檔案開啟後台，手機掃不到。請先把後台上傳到 GitHub Pages（說明書第四節），用網址開啟後台，這裡就會出現 QR Code。");
+  $("qrAdminDl").disabled=$("qrAdminCopy").disabled=!okA;
+  $("qrAdminNote").innerHTML=okA?"展示時可以把這個 QR Code 給要一起操作的人掃，對方仍需要輸入後台密碼才能使用。":"";
+  const okS=showQR("qrShop","qrShopUrl",shopURL(),"還沒填前台網址。到「前台設定與分類 → 基本資料」填入，例如 https://tminunpuli.github.io/shop/");
+  $("qrShopDl").disabled=!okS;
+}
+$("qrAdminDl").onclick=()=>dlQR(adminURL(),"後台QRCode.png");
+$("qrAdminCopy").onclick=async()=>{try{await navigator.clipboard.writeText(adminURL());toast("已複製後台網址")}catch{toast("請手動複製："+adminURL())}};
+$("qrShopDl").onclick=()=>dlQR(shopURL(),"前台QRCode.png");
+
+/* ---------- 示範模式 ---------- */
+let demoDB=null;
+function demoApi(action,p){
+  if(!demoDB){
+    const cats=[["A","包包","AA","後背包"],["A","包包","AB","側背包"],["A","包包","AC","肩背包"],["A","包包","AE","零錢包"],["B","飾品","BA","耳環"],["B","飾品","BF","手鍊"],["C","衣服","CB","背心"],["D","造型編織物","DB","娃娃"],["E","圍巾","EA","長巾"],["F","織布圖案","FC","菱紋織"]];
+    const sw=i=>{const c=document.createElement("canvas");c.width=300;c.height=300;const x=c.getContext("2d");x.fillStyle=`hsl(${(i*53)%360},40%,42%)`;x.fillRect(0,0,300,300);x.strokeStyle="rgba(255,255,255,.8)";x.lineWidth=4;for(let r=0;r<6;r++)for(let k=0;k<4;k++){const cx=k*80+(r%2?40:0),cy=r*55;x.beginPath();x.moveTo(cx,cy-24);x.lineTo(cx+26,cy);x.lineTo(cx,cy+24);x.lineTo(cx-26,cy);x.closePath();x.stroke()}return c.toDataURL("image/jpeg",.7)};
+    const P=[];["AA001","AA002","AB001","AB002","AB003","AE001","BA001","BA002","BF001","CB001","DB001","DB002","EA001","FC001"].forEach((code,i)=>P.push({code,cat:code.slice(0,2),name:i<3?["山紋後背包","","菱紋側背包"][i]:"",price:i%3===0?null:800+i*120,status:"現貨",listed:i%2===0,pattern:i%4===0?"菱紋織":"",desc:"",tags:[],photos:i===5?[]:[sw(i)],created:"",updated:""}));
+    demoDB={settings:{"店名":"熊肯作織布的家","標語":"手織布與織品商品","聯絡說明":"喜歡的商品請記下商品編號，透過下方方式與我們聯絡。","織紋選項":"平織,斜紋織,菱紋織,菱形紋,山形紋,線條紋,神話故事"},categories:cats.map((c,i)=>({main:c[0],mainName:c[1],code:c[2],name:c[3],show:true,order:i})),products:P};
+  }
+  const D=demoDB,clone=o=>JSON.parse(JSON.stringify(o));
+  return new Promise(res=>setTimeout(()=>{
+    if(action==="login") return res({ok:true});
+    if(action==="list") return res(Object.assign({ok:true},clone(D)));
+    if(action==="save"){
+      const x=clone(p.product);
+      if(!x.code){let m=0;D.products.forEach(q=>{if(q.code.startsWith(x.cat))m=Math.max(m,parseInt(q.code.slice(2),10))});x.code=x.cat+String(m+1).padStart(3,"0");D.products.push(x)}
+      else{const i=D.products.findIndex(q=>q.code===x.code);if(i>=0)D.products[i]=x;else D.products.push(x)}
+      return res({ok:true,product:x});
+    }
+    if(action==="delete"){D.products=D.products.filter(q=>q.code!==p.code);return res({ok:true})}
+    if(action==="bulk"){let n=0;D.products.forEach(q=>{if(p.codes.includes(q.code)){q.listed=p.listed;n++}});return res({ok:true,count:n})}
+    if(action==="settings"){Object.assign(D.settings,p.settings);return res({ok:true})}
+    res({ok:false,error:"示範模式不支援"});
+  },150));
+}
+
+/* ---------- 啟動 ---------- */
+if(DEMO){$("demoBar").hidden=false;$("loginNote").textContent="示範模式：輸入任何密碼即可登入"}
+(async()=>{const k=store.get("wkey");if(k){KEY=k;try{await api("login");await enter()}catch{store.del("wkey");KEY=""}}})();
+</script>
+</body>
+</html>
