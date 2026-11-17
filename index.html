@@ -130,12 +130,18 @@ nav.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(-
 .setf input,.setf textarea{padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);font-size:14px}
 .grp{border:1px solid var(--line);border-radius:8px;padding:12px 14px;margin:0;display:grid;gap:10px}
 .grp legend{font-weight:700;font-size:14px;color:var(--ink);padding:0 6px}
-.heroes{display:flex;gap:8px;flex-wrap:wrap}
-.hero{position:relative;width:180px;aspect-ratio:16/9;border-radius:6px;overflow:hidden;background:var(--bg);border:1px solid var(--line)}
+.heroes{display:flex;flex-direction:column;gap:10px}
+.hrow{display:grid;grid-template-columns:200px 1fr;gap:12px;border:1px solid var(--line);border-radius:8px;padding:10px;background:var(--bg)}
+@media (max-width:600px){.hrow{grid-template-columns:1fr}}
+.hero{position:relative;width:100%;aspect-ratio:16/9;border-radius:6px;overflow:hidden;background:var(--surface);border:1px solid var(--line);align-self:start}
 .hero img{width:100%;height:100%;object-fit:cover}
 .hero .hb{position:absolute;top:4px;display:flex;gap:4px;right:4px}
-.hero .hb button{width:24px;height:24px;border:0;border-radius:4px;background:rgba(0,0,0,.6);color:#fff;cursor:pointer;font-size:12px}
+.hero .hb button{width:26px;height:26px;border:0;border-radius:4px;background:rgba(0,0,0,.6);color:#fff;cursor:pointer;font-size:12px}
 .hero .n{position:absolute;left:4px;bottom:4px;font-size:11px;background:rgba(0,0,0,.6);color:#fff;border-radius:3px;padding:0 5px}
+.htx{display:grid;gap:6px}
+.htx label{font-size:12px}
+.htx input,.htx textarea{padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--surface);font-size:13px}
+.subgrp{display:grid;gap:10px;border-top:1px dashed var(--line);padding-top:10px}
 .qrtop{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px}
 .qrcard{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:8px;align-items:flex-start}
 .qrcard h3{margin:0;font-size:16px}
@@ -255,13 +261,17 @@ nav.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(-
       </fieldset>
 
       <fieldset class="grp"><legend>首頁形象圖（Banner）</legend>
-        <div class="note">建議用橫式照片，寬 1600px 以上。可放多張，會每 6 秒自動輪播；沒有照片時顯示藍染條紋底。</div>
+        <div class="note">建議用橫式照片，寬 1600px 以上。可放多張，每 6 秒自動輪播，文字會跟著照片換。沒有照片時顯示藍染條紋底。</div>
         <div class="heroes" id="heroList"></div>
         <div class="acts" style="margin:0"><label class="btn small" for="heroIn">＋ 上傳形象圖</label><input type="file" id="heroIn" accept="image/*" multiple hidden><span class="note" id="heroNote"></span></div>
         <input type="hidden" id="s_形象圖" data-k="形象圖">
-        <label for="s_形象小標">小標（標題上方的紅色小字）<input id="s_形象小標" data-k="形象小標" placeholder="手織 · 工房"></label>
-        <label for="s_形象標題">大標題（留空則顯示店名）<input id="s_形象標題" data-k="形象標題" placeholder="一線一線，織進日常"></label>
-        <label for="s_形象副標">副標（留空則顯示標語）<textarea id="s_形象副標" data-k="形象副標" rows="2"></textarea></label>
+        <input type="hidden" id="s_形象文字" data-k="形象文字">
+        <div class="subgrp">
+          <div class="note"><b>預設文字</b>：哪張照片的欄位沒填，就用這裡的文字。</div>
+          <label for="s_形象小標">小標（標題上方的紅色小字）<input id="s_形象小標" data-k="形象小標" placeholder="手織 · 工房"></label>
+          <label for="s_形象標題">大標題（留空則顯示店名）<input id="s_形象標題" data-k="形象標題" placeholder="一線一線，織進日常"></label>
+          <label for="s_形象副標">副標（留空則顯示標語）<textarea id="s_形象副標" data-k="形象副標" rows="2"></textarea></label>
+        </div>
       </fieldset>
 
       <fieldset class="grp"><legend>關於我們</legend>
@@ -697,12 +707,26 @@ $("upGo").onclick=async()=>{
 };
 
 /* ---------- 設定 ---------- */
-let heroIds=[];
+let heroes=[];  // [{id,k,t,s}]：每張形象圖和它自己的文字
+function syncHeroFields(){
+  $("s_形象圖").value=heroes.map(h=>h.id).join("\n");
+  const tx=heroes.map(h=>({k:h.k||"",t:h.t||"",s:h.s||""}));
+  $("s_形象文字").value=tx.some(x=>x.k||x.t||x.s)?JSON.stringify(tx):"";
+}
 function drawHeroes(){
-  $("s_形象圖").value=heroIds.join("\n");
-  $("heroList").innerHTML=heroIds.length?heroIds.map((id,i)=>`<div class="hero">${imgTag(id,480,"形象圖 "+(i+1))}<span class="n">${i+1}</span><span class="hb">${i?`<button type="button" data-up="${i}" title="往前移" aria-label="往前移">←</button>`:""}<button type="button" data-rm="${i}" title="移除" aria-label="移除">✕</button></span></div>`).join(""):`<span class="note">尚未設定形象圖</span>`;
-  $("heroList").querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>{heroIds.splice(+b.dataset.rm,1);drawHeroes();$("heroNote").textContent="記得按「儲存前台設定」"});
-  $("heroList").querySelectorAll("[data-up]").forEach(b=>b.onclick=()=>{const i=+b.dataset.up;[heroIds[i-1],heroIds[i]]=[heroIds[i],heroIds[i-1]];drawHeroes();$("heroNote").textContent="記得按「儲存前台設定」"});
+  syncHeroFields();
+  const ph={k:$("s_形象小標").value||"手織 · 工房",t:$("s_形象標題").value||DATA.settings["店名"]||"",s:$("s_形象副標").value||DATA.settings["標語"]||""};
+  $("heroList").innerHTML=heroes.length?heroes.map((h,i)=>`<div class="hrow">
+    <div class="hero">${imgTag(h.id,480,"形象圖 "+(i+1))}<span class="n">第 ${i+1} 張</span><span class="hb">${i?`<button type="button" data-up="${i}" title="往前移" aria-label="往前移">←</button>`:""}<button type="button" data-rm="${i}" title="移除" aria-label="移除這張">✕</button></span></div>
+    <div class="htx">
+      <label for="hk${i}">小標<input id="hk${i}" data-i="${i}" data-f="k" value="${esc(h.k)}" placeholder="${esc(ph.k)}"></label>
+      <label for="ht${i}">大標題<input id="ht${i}" data-i="${i}" data-f="t" value="${esc(h.t)}" placeholder="${esc(ph.t)}"></label>
+      <label for="hs${i}">副標<textarea id="hs${i}" data-i="${i}" data-f="s" rows="2" placeholder="${esc(ph.s)}">${esc(h.s)}</textarea></label>
+    </div></div>`).join(""):`<span class="note">尚未設定形象圖</span>`;
+  const dirty=()=>{$("heroNote").textContent="記得按「儲存前台設定」";$("heroNote").className="note"};
+  $("heroList").querySelectorAll("[data-f]").forEach(el=>el.oninput=()=>{heroes[+el.dataset.i][el.dataset.f]=el.value;syncHeroFields();dirty()});
+  $("heroList").querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>{heroes.splice(+b.dataset.rm,1);drawHeroes();dirty()});
+  $("heroList").querySelectorAll("[data-up]").forEach(b=>b.onclick=()=>{const i=+b.dataset.up;[heroes[i-1],heroes[i]]=[heroes[i],heroes[i-1]];drawHeroes();dirty()});
 }
 $("heroIn").onchange=async e=>{
   const files=[...e.target.files];e.target.value="";
@@ -714,20 +738,24 @@ $("heroIn").onchange=async e=>{
     try{
       const dataUrl=await resize(f,2400,.85);
       const id=DEMO?dataUrl:(await api("upload",{code:"形象圖",mime:"image/jpeg",data:dataUrl.split(",")[1]})).id;
-      heroIds.push(id);drawHeroes();
+      heroes.push({id,k:"",t:"",s:""});drawHeroes();
     }catch(err){note.textContent=err.message;note.className="note err";return}
   }
   note.textContent="已上傳，記得按「儲存前台設定」";
 };
+["s_形象小標","s_形象標題","s_形象副標"].forEach(id=>document.addEventListener("input",e=>{if(e.target.id===id&&heroes.length)drawHeroes()}));
 function fillSettings(){
   document.querySelectorAll("#setForm [data-k]").forEach(el=>el.value=DATA.settings[el.dataset.k]||"");
   if(!$("s_織紋選項").value.trim())$("s_織紋選項").value=DEFAULT_PATS;
-  heroIds=String(DATA.settings["形象圖"]||"").split(/[\n,，]+/).map(s=>s.trim()).filter(Boolean);
+  const ids=String(DATA.settings["形象圖"]||"").split(/[\n,，]+/).map(s=>s.trim()).filter(Boolean);
+  let tx=[];try{const t=JSON.parse(DATA.settings["形象文字"]||"[]");if(Array.isArray(t))tx=t}catch{}
+  heroes=ids.map((id,i)=>({id,k:(tx[i]||{}).k||"",t:(tx[i]||{}).t||"",s:(tx[i]||{}).s||""}));
   drawHeroes();$("heroNote").textContent="";
   $("catTbl").innerHTML=`<tr><th>大類</th><th>代碼</th><th>類別</th><th>前台</th><th>件數</th></tr>`+DATA.categories.map(c=>`<tr><td>${esc(c.main+" "+c.mainName)}</td><td class="code">${esc(c.code)}</td><td>${esc(c.name)}</td><td>${c.show?"顯示":"隱藏"}</td><td>${DATA.products.filter(p=>p.cat===c.code).length}</td></tr>`).join("");
 }
 $("setForm").addEventListener("submit",async e=>{
   e.preventDefault();
+  syncHeroFields();
   const s={};document.querySelectorAll("#setForm [data-k]").forEach(el=>s[el.dataset.k]=el.value.trim());
   const bad=["聯絡連結","Facebook","Instagram"].find(k=>s[k]&&!/^https:\/\//i.test(s[k]));
   const err=bad?`${bad} 要以 https:// 開頭`:(s["Email"]&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s["Email"]))?"Email 格式不正確":(s["LINE"]&&/^http:/i.test(s["LINE"]))?"LINE 連結要以 https:// 開頭":"";
