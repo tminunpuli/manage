@@ -142,6 +142,20 @@ nav.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(-
 .htx label{font-size:12px}
 .htx input,.htx textarea{padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--surface);font-size:13px}
 .subgrp{display:grid;gap:10px;border-top:1px dashed var(--line);padding-top:10px}
+.covers{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.cv{border:1px solid var(--line);border-radius:8px;background:var(--bg);padding:8px;display:flex;flex-direction:column;gap:6px}
+.cv .ci{aspect-ratio:1;border-radius:6px;overflow:hidden;background:var(--surface);display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px}
+.cv .ci img{width:100%;height:100%;object-fit:cover}
+.cv b{font-size:14px}
+.cv .row{display:flex;gap:4px;flex-wrap:wrap;align-items:center}
+.pick{background:var(--surface);border-radius:12px;max-width:900px;width:100%;max-height:92%;overflow:auto;padding:18px;display:flex;flex-direction:column;gap:12px}
+.pick select{padding:5px 8px;border:1px solid var(--line);border-radius:6px;background:var(--surface);font-size:13px}
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px}
+.pgrid button{border:2px solid transparent;border-radius:8px;padding:0;background:var(--bg);cursor:pointer;overflow:hidden;display:flex;flex-direction:column;text-align:left}
+.pgrid button:hover{border-color:var(--line)}
+.pgrid button.on{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}
+.pgrid img{aspect-ratio:1;object-fit:cover;width:100%}
+.pgrid span{font-size:11px;padding:3px 6px;color:var(--muted);font-family:ui-monospace,Menlo,monospace}
 .qrtop{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px}
 .qrcard{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:8px;align-items:flex-start}
 .qrcard h3{margin:0;font-size:16px}
@@ -274,6 +288,13 @@ nav.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(-
         </div>
       </fieldset>
 
+      <fieldset class="grp"><legend>分類代表圖</legend>
+        <div class="note">首頁「商品分類」卡片上的圖片。點「選擇圖片」從這一類的商品照片挑一張，或上傳別的照片；沒指定的分類會用第一件商品的照片。</div>
+        <div class="covers" id="coverList"></div>
+        <input type="hidden" id="s_分類代表圖" data-k="分類代表圖">
+        <span class="note" id="coverNote"></span>
+      </fieldset>
+
       <fieldset class="grp"><legend>關於我們</legend>
         <label for="s_店家介紹">店家介紹<textarea id="s_店家介紹" data-k="店家介紹" rows="5"></textarea></label>
         <label for="s_地址">地址（前台會連到 Google 地圖）<input id="s_地址" data-k="地址"></label>
@@ -362,6 +383,20 @@ nav.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(-
       </div>
       <div class="note" id="dNote"></div>
     </form>
+  </div>
+</div>
+<div class="ov" id="cov" hidden>
+  <div class="pick" role="dialog" aria-modal="true" aria-labelledby="covTitle">
+    <div class="acts" style="justify-content:space-between;margin:0">
+      <h3 id="covTitle" style="margin:0;font-size:17px"></h3>
+      <span style="display:flex;gap:8px"><label class="btn small" for="covUp">上傳其他圖片</label><input type="file" id="covUp" accept="image/*" hidden><button type="button" class="btn small" id="covClose">關閉</button></span>
+    </div>
+    <div class="acts" style="margin:0">
+      <label class="note" for="covSub" style="display:flex;gap:6px;align-items:center">類別<select id="covSub"></select></label>
+      <label class="note" for="covListed" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="covListed"> 只看已上架</label>
+      <span class="note" id="covNote"></span>
+    </div>
+    <div class="pgrid" id="covGrid"></div>
   </div>
 </div>
 <div class="toast" id="toast" hidden></div>
@@ -751,16 +786,70 @@ function fillSettings(){
   let tx=[];try{const t=JSON.parse(DATA.settings["形象文字"]||"[]");if(Array.isArray(t))tx=t}catch{}
   heroes=ids.map((id,i)=>({id,k:(tx[i]||{}).k||"",t:(tx[i]||{}).t||"",s:(tx[i]||{}).s||""}));
   drawHeroes();$("heroNote").textContent="";
+  covers={};try{const c=JSON.parse(DATA.settings["分類代表圖"]||"{}");if(c&&typeof c==="object")covers=c}catch{}
+  drawCovers();$("coverNote").textContent="";
   $("catTbl").innerHTML=`<tr><th>大類</th><th>代碼</th><th>類別</th><th>前台</th><th>件數</th></tr>`+DATA.categories.map(c=>`<tr><td>${esc(c.main+" "+c.mainName)}</td><td class="code">${esc(c.code)}</td><td>${esc(c.name)}</td><td>${c.show?"顯示":"隱藏"}</td><td>${DATA.products.filter(p=>p.cat===c.code).length}</td></tr>`).join("");
 }
+/* ---------- 分類代表圖 ---------- */
+let covers={};  // {大類代碼: 照片ID}
+const mainsList=()=>{const m=[];for(const c of DATA.categories)if(!m.some(x=>x.main===c.main))m.push({main:c.main,name:c.mainName});return m};
+const mainProducts=m=>DATA.products.filter(p=>(catOf(p.cat)||{}).main===m&&p.photos.length);
+function syncCovers(){const o={};for(const k in covers)if(covers[k])o[k]=covers[k];$("s_分類代表圖").value=Object.keys(o).length?JSON.stringify(o):""}
+function drawCovers(){
+  syncCovers();
+  const ms=mainsList().filter(m=>mainProducts(m.main).length||covers[m.main]);
+  $("coverList").innerHTML=ms.length?ms.map(m=>{
+    const auto=(mainProducts(m.main).find(p=>p.listed)||mainProducts(m.main)[0]||{photos:[]}).photos[0];
+    const id=covers[m.main]||auto;
+    return `<div class="cv"><div class="ci">${id?imgTag(id,400,m.name):"沒有照片"}</div><b>${esc(m.main+" "+m.name)}</b>
+      <span class="note">${covers[m.main]?"已指定":"自動（第一件商品）"}</span>
+      <span class="row"><button type="button" class="btn small" data-pick="${esc(m.main)}">選擇圖片</button>${covers[m.main]?`<button type="button" class="btn small" data-auto="${esc(m.main)}">恢復自動</button>`:""}</span></div>`;
+  }).join(""):`<span class="note">還沒有商品照片</span>`;
+  $("coverList").querySelectorAll("[data-pick]").forEach(b=>b.onclick=()=>openCoverPicker(b.dataset.pick));
+  $("coverList").querySelectorAll("[data-auto]").forEach(b=>b.onclick=()=>{delete covers[b.dataset.auto];drawCovers();coverDirty()});
+}
+function coverDirty(){$("coverNote").textContent="記得按「儲存前台設定」";$("coverNote").className="note"}
+let pickMain="";
+function openCoverPicker(m){
+  pickMain=m;const mm=mainsList().find(x=>x.main===m)||{name:m};
+  $("covTitle").textContent=`選擇「${mm.name}」的代表圖`;
+  $("covSub").innerHTML=`<option value="">全部</option>`+DATA.categories.filter(c=>c.main===m).map(c=>`<option value="${esc(c.code)}">${esc(c.code+" "+c.name)}</option>`).join("");
+  $("covNote").textContent="";
+  drawPicker();$("cov").hidden=false;$("covClose").focus();
+}
+function drawPicker(){
+  const sub=$("covSub").value,onlyL=$("covListed").checked;
+  const items=[];
+  mainProducts(pickMain).filter(p=>(!sub||p.cat===sub)&&(!onlyL||p.listed)).sort((a,b)=>a.code.localeCompare(b.code,"en",{numeric:true}))
+    .forEach(p=>p.photos.forEach((id,k)=>items.push({id,label:p.code+(p.photos.length>1?`-${k+1}`:"")})));
+  const cur=covers[pickMain];
+  if(cur&&!items.some(x=>x.id===cur)) items.unshift({id:cur,label:"目前使用（上傳的圖）"});
+  $("covGrid").innerHTML=items.length?items.map(x=>`<button type="button" data-id="${esc(x.id)}" class="${x.id===cur?"on":""}">${imgTag(x.id,300,x.label)}<span>${esc(x.label)}</span></button>`).join(""):`<span class="note">沒有符合的照片</span>`;
+  $("covGrid").querySelectorAll("[data-id]").forEach(b=>b.onclick=()=>{covers[pickMain]=b.dataset.id;closeCover();drawCovers();coverDirty()});
+}
+function closeCover(){$("cov").hidden=true}
+$("covSub").onchange=drawPicker;$("covListed").onchange=drawPicker;
+$("covClose").onclick=closeCover;
+$("cov").addEventListener("click",e=>{if(e.target===$("cov"))closeCover()});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("cov").hidden)closeCover()});
+$("covUp").onchange=async e=>{
+  const f=e.target.files[0];e.target.value="";if(!f)return;
+  $("covNote").textContent="上傳中…";$("covNote").className="note";
+  try{
+    const dataUrl=await resize(f,1600,.85);
+    const id=DEMO?dataUrl:(await api("upload",{code:"分類代表圖",mime:"image/jpeg",data:dataUrl.split(",")[1]})).id;
+    covers[pickMain]=id;closeCover();drawCovers();coverDirty();
+  }catch(err){$("covNote").textContent=err.message;$("covNote").className="note err"}
+};
+
 $("setForm").addEventListener("submit",async e=>{
   e.preventDefault();
-  syncHeroFields();
+  syncHeroFields();syncCovers();
   const s={};document.querySelectorAll("#setForm [data-k]").forEach(el=>s[el.dataset.k]=el.value.trim());
   const bad=["聯絡連結","Facebook","Instagram"].find(k=>s[k]&&!/^https:\/\//i.test(s[k]));
   const err=bad?`${bad} 要以 https:// 開頭`:(s["Email"]&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s["Email"]))?"Email 格式不正確":(s["LINE"]&&/^http:/i.test(s["LINE"]))?"LINE 連結要以 https:// 開頭":"";
   if(err){$("setNote").textContent=err;$("setNote").className="note err";return}
-  try{await api("settings",{settings:s});Object.assign(DATA.settings,s);$("setNote").textContent="已儲存";$("setNote").className="note";renderAll()}
+  try{await api("settings",{settings:s});Object.assign(DATA.settings,s);$("setNote").textContent="已儲存";$("coverNote").textContent="";$("heroNote").textContent="";$("setNote").className="note";renderAll()}
   catch(err){$("setNote").textContent=err.message;$("setNote").className="note err"}
 });
 
